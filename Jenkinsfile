@@ -6,8 +6,8 @@ pipeline {
         DOCKER_IMAGE = 'maven:3.6.3-jdk-8' // Change to your Maven Docker image if necessary
         // NEXUS_URL = 'http://nexus.example.com/repository/maven-releases/'
         // MAVEN_CREDENTIALS_ID = 'nexus-credentials'
-        // GITHUB_CREDENTIALS_ID = 'github-credentials'
-        // FORTIFY_MAVEN_PLUGIN = 'true'
+        GITHUB_CREDENTIALS_ID = 'github-credentials'
+        FORTIFY_MAVEN_PLUGIN = 'true'
         SKIP_TESTS = 'true'
         SKIP_FUNCTIONAL_TESTS = 'true'
         SKIP_PERFORMANCE_TESTS = 'true'
@@ -34,57 +34,56 @@ pipeline {
         }
 
         stage('Test') {
+            when {
+                expression { return env.SKIP_TESTS == 'false' }
+            }
             steps {
                 script {
-                    if (env.SKIP_TESTS == 'false') {
-                        docker.image(env.DOCKER_IMAGE).inside {
-                            sh 'mvn test'
-                        }
-                    } else {
-                        echo 'Tests are skipped.'
+                    docker.image(env.DOCKER_IMAGE).inside {
+                        sh 'mvn test'
                     }
                 }
             }
         }
 
-    //     stage('Fortify Scan') {
-    //         when {
-    //             expression { return env.SKIP_FORTIFY == 'false' }
-    //         }
-    //         steps {
-    //             script {
-    //                 docker.image(env.DOCKER_IMAGE).inside {
-    //                     sh 'mvn com.fortify.ps.maven.plugin:sca-maven-plugin:clean compile'
-    //                 }
-    //             }
-    //         }
-    //     }
+        stage('Fortify Scan') {
+            when {
+                expression { return env.SKIP_FORTIFY == 'false' }
+            }
+            steps {
+                script {
+                    docker.image(env.DOCKER_IMAGE).inside {
+                        sh 'mvn com.fortify.ps.maven.plugin:sca-maven-plugin:clean compile'
+                    }
+                }
+            }
+        }
 
-    //     stage('SonarQube Analysis') {
-    //         when {
-    //             expression { return env.SKIP_SONAR == 'false' }
-    //         }
-    //         steps {
-    //             script {
-    //                 docker.image(env.DOCKER_IMAGE).inside {
-    //                     sh 'mvn sonar:sonar'
-    //                 }
-    //             }
-    //         }
-    //     }
+        stage('SonarQube Analysis') {
+            when {
+                expression { return env.SKIP_SONAR == 'false' }
+            }
+            steps {
+                script {
+                    docker.image(env.DOCKER_IMAGE).inside {
+                        sh 'mvn sonar:sonar'
+                    }
+                }
+            }
+        }
 
-    //     stage('Deploy to Nexus') {
-    //         steps {
-    //             script {
-    //                 docker.image(env.DOCKER_IMAGE).inside {
-    //                     withCredentials([usernamePassword(credentialsId: env.MAVEN_CREDENTIALS_ID, usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
-    //                         sh 'mvn deploy -DrepositoryId=nexus -Durl=${NEXUS_URL}'
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
+        stage('Deploy to Nexus') {
+            steps {
+                script {
+                    docker.image(env.DOCKER_IMAGE).inside {
+                        withCredentials([usernamePassword(credentialsId: env.MAVEN_CREDENTIALS_ID, usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+                            sh 'mvn deploy -DrepositoryId=nexus -Durl=${NEXUS_URL}'
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     post {
         always {
